@@ -68,4 +68,7 @@ if(${RLOPENXR_BUILD_EXAMPLES})
 
 	add_executable(rlOpenXR_hello_teleport "examples/4_hello_teleport.c")
 	target_link_libraries(rlOpenXR_hello_teleport PUBLIC ${PROJECT_NAME})
+
+	add_executable(rlOpenXR_hello_menu "examples/5_hello_menu.c")
+	target_link_libraries(rlOpenXR_hello_menu PUBLIC ${PROJECT_NAME})
 endif()
