@@ -31,6 +31,13 @@ typedef struct
 	Vector3 position;
 } Cube;
 
+typedef enum { SHAPE_NONE, SHAPE_CUBE, SHAPE_SPHERE } ShapeType;
+
+ShapeType selectedShape = SHAPE_CUBE;
+Color cubeColor;
+Color sphereColor;
+
+
 // Function prototypes
 float calculate_parabola_time_to_floor(Vector3 hand_position, Quaternion hand_orientation);
 Vector3 sample_parabola_position(Vector3 hand_position, Quaternion hand_orientation, float t);
@@ -40,6 +47,8 @@ void assign_hand_input_bindings(XRInputBindings* bindings, RLHand* left, RLHand*
 
 bool get_action_clicked_this_frame(XrAction action, XrPath sub_path);
 bool is_action_active(XrAction action, XrPath sub_path);
+bool CheckCollisionRayBox(Ray ray, BoundingBox box);
+bool CheckCollisionRaySphere(Ray ray, Vector3 sphereCenter, float sphereRadius);
 
 // Global variables
 bool is_left_menu_active = false;
@@ -86,6 +95,9 @@ int main()
 
 	SetCameraMode(local_camera, CAMERA_FREE);
 
+	cubeColor = BLUE;
+	sphereColor = RED;
+
 	SetTargetFPS(-1);	// OpenXR is responsible for waiting in rlOpenXRUpdate()
 						// Having raylib also do it's VSync causes noticeable input lag
 
@@ -121,19 +133,30 @@ while (!WindowShouldClose())        // Detect window close button or ESC key
 	right_hand.position = Vector3Add(right_local_hand.position, stage_position);
 
 	// Teleportation
-	if (get_action_clicked_this_frame(bindings.hand_teleport_action, bindings.hand_sub_paths[RLOPENXR_HAND_RIGHT]))
+	if (get_action_clicked_this_frame(bindings.hand_teleport_action, bindings.hand_sub_paths[RLOPENXR_HAND_RIGHT]) && !is_left_menu_active)
 	{
 		stage_position = sample_parabola_position(right_hand.position, right_hand.orientation,
 			calculate_parabola_time_to_floor(right_hand.position, right_hand.orientation));
 	}
 
-	// Place a cube
-	if (get_action_clicked_this_frame(bindings.place_cube_action, bindings.hand_sub_paths[RLOPENXR_HAND_RIGHT]) && cubeCount < MAX_CUBES)
+	// Place a cube or sphere
+	if (get_action_clicked_this_frame(bindings.place_cube_action, bindings.hand_sub_paths[RLOPENXR_HAND_RIGHT]) && cubeCount < MAX_CUBES && !is_left_menu_active)
 	{
-		Vector3 cube_position = sample_parabola_position(right_hand.position, right_hand.orientation,
+		Vector3 place_position = sample_parabola_position(right_hand.position, right_hand.orientation,
 			calculate_parabola_time_to_floor(right_hand.position, right_hand.orientation));
-		placedCubes[cubeCount++] = (Cube){ cube_position };
+
+		if (selectedShape == SHAPE_CUBE)
+		{
+			placedCubes[cubeCount++] = (Cube){ place_position };
+		}
+		else if (selectedShape == SHAPE_SPHERE)
+		{
+			// Store position for sphere
+			placedCubes[cubeCount++] = (Cube){ place_position };
+			// Optionally you might need a separate array for spheres if they need separate treatment
+		}
 	}
+
 
 	// Check left hand button for menu activation
 	is_left_menu_active = is_action_active(bindings.hand_teleport_action, bindings.hand_sub_paths[RLOPENXR_HAND_LEFT]);
@@ -161,8 +184,17 @@ while (!WindowShouldClose())        // Detect window close button or ESC key
 
 			DrawModelEx(hand_model, left_hand.position, left_hand_axis, left_hand_angle * RAD2DEG, Vector3One(), ORANGE);
 			DrawModelEx(hand_model, right_hand.position, right_hand_axis, right_hand_angle * RAD2DEG, Vector3One(), PINK);
+		if (is_left_menu_active) {
+			// Calculate the forward direction of the right hand
+		    Vector3 hand_forward = Vector3RotateByQuaternion((Vector3){0, -1, 0}, right_hand.orientation); // Adjust the direction vector to point forward
+		    Vector3 beam_start = right_hand.position;
+		    Vector3 beam_end = Vector3Add(beam_start, Vector3Scale(hand_forward, 5.0f)); // Extend the beam forward
+		    float beam_radius = 0.01f; // Define the thickness of the beam
 
-			// Draw Teleportation Arc
+		    // Draw the beam as a cylinder
+		    DrawCylinderEx(beam_start, beam_end, beam_radius, beam_radius, 6, RED);
+		} else {
+			// Draw teleportation arc
 			const float t_right = calculate_parabola_time_to_floor(right_hand.position, right_hand.orientation);
 
 			const int ARC_SEGMENTS = 50;
@@ -174,6 +206,10 @@ while (!WindowShouldClose())        // Detect window close button or ESC key
 				Vector3 arc_position_1 = sample_parabola_position(right_hand.position, right_hand.orientation, interpolation_t_1);
 				DrawCylinderEx(arc_position_0, arc_position_1, 0.05f, 0.05f, 12, DARKGREEN);
 			}
+		}
+
+
+
 
 			// Draw Scene
 			DrawCube((Vector3) { -3, 0, 0 }, 2.0f, 2.0f, 2.0f, RED);
@@ -182,39 +218,96 @@ while (!WindowShouldClose())        // Detect window close button or ESC key
 			// Draw placed cubes
 			for (int i = 0; i < cubeCount; i++)
 			{
-				DrawCube(placedCubes[i].position, 0.5f, 0.5f, 0.5f, BLUE);
+				if (selectedShape == SHAPE_CUBE)
+				{
+					DrawCube(placedCubes[i].position, 0.5f, 0.5f, 0.5f, BLUE);
+				}
+				else if (selectedShape == SHAPE_SPHERE)
+				{
+					DrawSphere(placedCubes[i].position, 0.25f, RED); // Example size for sphere
+				}
 			}
-
 			// Draw Menu if active
-			if (is_left_menu_active)
-			{
-				// Define the position of the menu in front of the wrist of the left hand
-				Vector3 hand_forward = Vector3RotateByQuaternion((Vector3){0, 0, 1}, left_hand.orientation);
-				Vector3 offset = Vector3Scale(hand_forward, -0.35f); // Offset in front of the hand
-				Vector3 menu_position = Vector3Add(left_hand.position, offset);
+if (is_left_menu_active)
+{
+    // Define the position of the menu in front of the wrist of the left hand
+    Vector3 hand_forward = Vector3RotateByQuaternion((Vector3){0, 0, 1}, left_hand.orientation);
+    Vector3 offset = Vector3Scale(hand_forward, -0.35f); // Offset in front of the hand
+    Vector3 menu_position = Vector3Add(left_hand.position, offset);
 
-				// Use the hand's orientation to determine the menu orientation
-				Vector3 hand_up = Vector3RotateByQuaternion((Vector3){0, 1, 0}, left_hand.orientation);
-				Vector3 hand_right = Vector3RotateByQuaternion((Vector3){1, 0, 0}, left_hand.orientation);
+    // Use the hand's orientation to determine the menu orientation
+    Vector3 hand_up = Vector3RotateByQuaternion((Vector3){0, 1, 0}, left_hand.orientation);
+    Vector3 hand_right = Vector3RotateByQuaternion((Vector3){1, 0, 0}, left_hand.orientation);
 
-				// Construct the transformation matrix for the menu
-				Matrix menu_transform = {
-					hand_right.x, hand_right.y, hand_right.z, 0,
-					hand_up.x, hand_up.y, hand_up.z, 0,
-					hand_forward.x, hand_forward.y, hand_forward.z, 0,
-					menu_position.x, menu_position.y, menu_position.z, 1
-				};
+    // Construct the transformation matrix for the menu
+    Matrix menu_transform = {
+        hand_right.x, hand_right.y, hand_right.z, 0,
+        hand_up.x, hand_up.y, hand_up.z, 0,
+        hand_forward.x, hand_forward.y, hand_forward.z, 0,
+        menu_position.x, menu_position.y, menu_position.z, 1
+    };
 
-				// Apply the transformation matrix and draw the menu (a larger square for now)
-				rlPushMatrix();
-				rlMultMatrixf(OurMatrixToFloat(menu_transform));
+    // Apply the transformation matrix and draw the menu
+    rlPushMatrix();
+    rlMultMatrixf(OurMatrixToFloat(menu_transform));
 
-				// Apply an additional 90 degrees rotation around the X-axis
-				rlRotatef(180, 0, 1, 0);
-				rlRotatef(90, 1, 0, 0);
-				DrawCube((Vector3){0, 0, 0}, 0.5f, 0.5f, 0.01f, LIGHTGRAY); // Draw at the origin of the transformed space
-				rlPopMatrix();
-			}
+    // Apply an additional 90 degrees rotation around the X-axis
+    rlRotatef(180, 0, 1, 0);
+    rlRotatef(90, 1, 0, 0);
+    DrawCube((Vector3){0, 0, 0}, 0.5f, 0.5f, 0.01f, LIGHTGRAY); // Draw the menu
+
+    // Draw additional shapes on the menu
+    float shape_offset = 0.1f; // Offset to place shapes side by side
+
+    // Initialize hit state
+    bool cubeHit = false;
+    bool sphereHit = false;
+
+    // Draw and check collision for cube
+    Vector3 cubePosition = (Vector3){-shape_offset, 0, 0};
+    BoundingBox cubeBB = (BoundingBox){(Vector3){cubePosition.x - 0.1f, cubePosition.y - 0.1f, cubePosition.z - 0.1f},
+                                       (Vector3){cubePosition.x + 0.1f, cubePosition.y + 0.1f, cubePosition.z + 0.1f}};
+    if (CheckCollisionRayBox((Ray){right_hand.position, hand_forward}, cubeBB))
+    {
+        cubeHit = true;
+        cubeColor = SKYBLUE; // Highlight the cube
+    }
+    else
+    {
+        cubeColor = BLUE; // Default color
+    }
+    DrawCube(cubePosition, 0.1f, 0.1f, 0.1f, cubeColor);
+
+    // Draw and check collision for sphere
+    Vector3 spherePosition = (Vector3){shape_offset, 0, 0};
+    if (CheckCollisionRaySphere((Ray){right_hand.position, hand_forward}, spherePosition, 0.1f))
+    {
+        sphereHit = true;
+        sphereColor = PINK; // Highlight the sphere
+    }
+    else
+    {
+        sphereColor = RED; // Default color
+    }
+    DrawSphere(spherePosition, 0.1f, sphereColor);
+
+    rlPopMatrix();
+
+    // Handle selection
+    if (get_action_clicked_this_frame(bindings.hand_teleport_action, bindings.hand_sub_paths[RLOPENXR_HAND_RIGHT]))
+    {
+        if (cubeHit)
+        {
+            selectedShape = SHAPE_CUBE;
+        }
+        else if (sphereHit)
+        {
+            selectedShape = SHAPE_SPHERE;
+        }
+    }
+}
+
+
 
 		EndMode3D();
 
@@ -487,4 +580,54 @@ static float* OurMatrixToFloat(Matrix mat)
 	result[8] = mat.m2; result[9] = mat.m6; result[10] = mat.m10; result[11] = mat.m14;
 	result[12] = mat.m3; result[13] = mat.m7; result[14] = mat.m11; result[15] = mat.m15;
 	return result;
+}
+
+bool CheckCollisionRayBox(Ray ray, BoundingBox box)
+{
+	Vector3 tmin = Vector3Zero();
+	Vector3 tmax = Vector3Zero();
+	float tymin, tymax, tzmin, tzmax;
+
+	tmin.x = (box.min.x - ray.position.x) / ray.direction.x;
+	tmax.x = (box.max.x - ray.position.x) / ray.direction.x;
+	if (tmin.x > tmax.x) {
+		float temp = tmin.x;
+		tmin.x = tmax.x;
+		tmax.x = temp;
+	}
+
+	tymin = (box.min.y - ray.position.y) / ray.direction.y;
+	tymax = (box.max.y - ray.position.y) / ray.direction.y;
+	if (tymin > tymax) {
+		float temp = tymin;
+		tymin = tymax;
+		tymax = temp;
+	}
+
+	if ((tmin.x > tymax) || (tymin > tmax.x)) return false;
+	if (tymin > tmin.x) tmin.x = tymin;
+	if (tymax < tmax.x) tmax.x = tymax;
+
+	tzmin = (box.min.z - ray.position.z) / ray.direction.z;
+	tzmax = (box.max.z - ray.position.z) / ray.direction.z;
+	if (tzmin > tzmax) {
+		float temp = tzmin;
+		tzmin = tzmax;
+		tzmax = temp;
+	}
+
+	if ((tmin.x > tzmax) || (tzmin > tmax.x)) return false;
+	if (tzmin > tmin.x) tmin.x = tzmin;
+	if (tzmax < tmax.x) tmax.x = tzmax;
+
+	return true;
+}
+
+bool CheckCollisionRaySphere(Ray ray, Vector3 sphereCenter, float sphereRadius) {
+	Vector3 oc = Vector3Subtract(ray.position, sphereCenter);
+	float a = Vector3DotProduct(ray.direction, ray.direction);
+	float b = 2.0f * Vector3DotProduct(oc, ray.direction);
+	float c = Vector3DotProduct(oc, oc) - sphereRadius * sphereRadius;
+	float discriminant = b * b - 4 * a * c;
+	return (discriminant > 0);
 }
