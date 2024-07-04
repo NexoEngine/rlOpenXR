@@ -68,8 +68,6 @@ int main()
 
 	Model hand_model = LoadModelFromMesh(GenMeshCube(0.2f, 0.2f, 0.2f));
 
-	SetCameraMode(local_camera, CAMERA_FREE);
-
 	SetTargetFPS(-1);	// OpenXR is responsible for waiting in rlOpenXRUpdate()
 						// Having raylib also do it's VSync causes noticeable input lag
 
@@ -89,7 +87,7 @@ int main()
 
 		rlOpenXRUpdateHands(&left_local_hand, &right_local_hand);
 
-		UpdateCamera(&local_camera); // Use mouse control as a debug option when no HMD is available
+		UpdateCamera(&local_camera, CAMERA_FREE); // Use mouse control as a debug option when no HMD is available
 		rlOpenXRUpdateCamera(&local_camera); // If the HMD is available, set the local_camera position to the HMD position
 
 		// Camera & Hand positions we get are local to the "stage" (Area where the physical person is standing)
@@ -184,7 +182,7 @@ int main()
 // Arc Math
 float calculate_parabola_time_to_floor(Vector3 hand_position, Quaternion hand_orientation)
 {
-	// Evaluate t = -(-V0 ± sqrt(2 * g * y0 + V0^2)) / g
+	// Evaluate t = -(-V0 ï¿½ sqrt(2 * g * y0 + V0^2)) / g
 	// Where y0: Start height
 	//		 V0: Arc initial y velocity
 	//		 g: Gravity constant

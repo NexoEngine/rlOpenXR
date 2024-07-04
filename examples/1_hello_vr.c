@@ -22,8 +22,6 @@ int main()
     camera.fovy = 45.0f;                       // Camera field-of-view Y
     camera.projection = CAMERA_PERSPECTIVE;    // Camera mode type
 
-    SetCameraMode(camera, CAMERA_FREE);
-
     SetTargetFPS(-1); // OpenXR is responsible for waiting in rlOpenXRUpdate()
                       // Having raylib also do it's VSync causes noticeable input lag
 
@@ -44,7 +42,7 @@ int main()
         rlOpenXRUpdate(); // Update OpenXR State.
                           // Should be called at the start of each frame before other rlOpenXR calls.
 
-        UpdateCamera(&camera); // Use mouse control as a debug option when no HMD is available
+        UpdateCamera(&camera, CAMERA_FREE); // Use mouse control as a debug option when no HMD is available
         rlOpenXRUpdateCamera(&camera); // If the HMD is available, set the camera position to the HMD position
 
         // Draw

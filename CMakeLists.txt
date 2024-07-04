@@ -12,7 +12,7 @@ option(RLOPENXR_BUILD_EXAMPLES "Build RLOpenXR Examples" ON)
 FetchContent_Declare(
 	raylib
 	GIT_REPOSITORY https://github.com/raysan5/raylib.git
-	GIT_TAG "4.2.0"
+	GIT_TAG "5.0"
 	# FIND_PACKAGE_ARGS # When CMake 3.24 is widely available, we can use this and remove our own "MakeAvailable_WithFindPackageCheck"
 )
 

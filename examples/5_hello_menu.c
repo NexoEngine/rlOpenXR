@@ -93,8 +93,6 @@ int main()
 
 	Model hand_model = LoadModelFromMesh(GenMeshCube(0.2f, 0.2f, 0.2f));
 
-	SetCameraMode(local_camera, CAMERA_FREE);
-
 	cubeColor = BLUE;
 	sphereColor = RED;
 
@@ -118,7 +116,7 @@ while (!WindowShouldClose())        // Detect window close button or ESC key
 
 	rlOpenXRUpdateHands(&left_local_hand, &right_local_hand);
 
-	UpdateCamera(&local_camera); // Use mouse control as a debug option when no HMD is available
+	UpdateCamera(&local_camera, CAMERA_FREE); // Use mouse control as a debug option when no HMD is available
 	rlOpenXRUpdateCamera(&local_camera); // If the HMD is available, set the local_camera position to the HMD position
 
 	// Camera & Hand positions we get are local to the "stage" (Area where the physical person is standing)
