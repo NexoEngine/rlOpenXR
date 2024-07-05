@@ -177,7 +177,7 @@ int main()
         if (get_action_clicked_this_frame(bindings.place_cube_action, bindings.hand_sub_paths[RLOPENXR_HAND_LEFT]))
         {
             window.active = !window.active;
-            // window.current_left_hand = left_hand;
+            window.current_left_hand = left_hand;
         }
 
         // Draw
@@ -241,21 +241,34 @@ int main()
                 }
             }
 
+            printf("%f %f %f\n", window.current_left_hand.orientation.x, window.current_left_hand.orientation.y, window.current_left_hand.orientation.z);
             if (window.active)
             {
-                Vector3 hand_forward = Vector3RotateByQuaternion((Vector3){0, 0, 1}, window.current_left_hand.orientation);
+                Vector3 hand_forward = Vector3RotateByQuaternion((Vector3){1, 0, 0}, window.current_left_hand.orientation);
+                //printf("%f %f %f\n", hand_forward.x, hand_forward.y, hand_forward.z);
+                // Vector3 rotateZ = (Vector3){0, 0, hand_forward.z};
 
                 // Utiliser l'orientation de la main pour déterminer l'orientation du cube
                 Vector3 hand_up = Vector3RotateByQuaternion((Vector3){0, 1, 0}, window.current_left_hand.orientation);
-                Vector3 hand_right = Vector3RotateByQuaternion((Vector3){1, 0, 0}, window.current_left_hand.orientation);
+                // Vector3 rotateY = (Vector3){0, hand_forward.x, 0};
+                // Matrix test = MatrixIdentity();
+                // test = MatrixRotateXYZ(rotateY);
+
+                Vector3 hand_left = Vector3RotateByQuaternion((Vector3){0, 0, 1}, window.current_left_hand.orientation);
 
                 // Construire la matrice de transformation pour le cube
                 Matrix transform = {
-                    hand_right.x, hand_right.y, hand_right.z, 0,
-                    hand_up.x, hand_up.y, hand_up.z, 0,
                     hand_forward.x, hand_forward.y, hand_forward.z, 0,
-                    hand_forward.x, hand_forward.y, hand_forward.z, 1
+                    hand_left.x, hand_left.y, hand_left.z, 0,
+                    hand_up.x, hand_up.y, hand_up.z, 0,
+                    window.current_left_hand.position.x, window.current_left_hand.position.y, window.current_left_hand.position.z, 1
                 };
+                // Matrix transform2 = {
+                //     hand_left.x, hand_left.y, hand_left.z, 0,
+                //     hand_up.x, hand_up.y, hand_up.z, 0,
+                //     hand_forward2.x, hand_forward2.y, hand_forward2.z, 0,
+                //     menu_position.x, menu_position.y, menu_position.z, 1
+                // };
 
                 // Appliquer la matrice de transformation et dessiner le cube
                 rlPushMatrix();
@@ -264,7 +277,6 @@ int main()
                 // Appliquer une rotation de 45° autour de l'axe Y
 
                 DrawCube(Vector3Zero(), 2, 1.2, 0.1, LIGHTGRAY); // Dessiner le cube centré
-                DrawCube((Vector3){0,0,0}, 1, 1, 1, GREEN);
                 rlPopMatrix();
             }
 
