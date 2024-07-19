@@ -67,10 +67,10 @@ int cubeCount = 0;
 float *OurMatrixToFloat(Matrix matrix);
 
 
-Quaternion InvertQuaternionYAxis(Quaternion q) {
-    float temp = q.y;
-    q.y = q.z;
-    q.z = temp;
+Quaternion InvertQuaternionAxis(Quaternion q) {
+    q.x = -q.x;
+    q.y = -q.y;
+    q.z = -q.z;
     return q;
 }
 
@@ -253,16 +253,12 @@ int main()
             if (window.active)
             {
                 Quaternion controllerOrientation = window.current_left_hand.orientation;
-                controllerOrientation = InvertQuaternionYAxis(controllerOrientation);
+                controllerOrientation = InvertQuaternionAxis(controllerOrientation);
 
                 // Utiliser l'orientation de la main pour déterminer l'orientation du cube
-                Vector3 hand_x = Vector3RotateByQuaternion((Vector3){1, 0, 0}, controllerOrientation); // z controler reverse
-                Vector3 hand_z = Vector3RotateByQuaternion((Vector3){0, 1, 0}, controllerOrientation); //x controler reverse
-                Vector3 hand_y = Vector3RotateByQuaternion((Vector3){0, 0, 1}, controllerOrientation); //all reverse
-                // all -1 => y controler reverse
-                // all 1 => y controler reverse
-                // -1, -1, 1 => all reverse
-                // 1, 1, -1 => all reverse
+                Vector3 hand_x = Vector3RotateByQuaternion((Vector3){1, 0, 0}, controllerOrientation);
+                Vector3 hand_y = Vector3RotateByQuaternion((Vector3){0, 1, 0}, controllerOrientation);
+                Vector3 hand_z = Vector3RotateByQuaternion((Vector3){0, 0, 1}, controllerOrientation);
 
                 // Construire la matrice de transformation pour le cube
                 Matrix transform = {
