@@ -66,6 +66,14 @@ int cubeCount = 0;
 
 float *OurMatrixToFloat(Matrix matrix);
 
+
+Quaternion InvertQuaternionYAxis(Quaternion q) {
+    float temp = q.y;
+    q.y = q.z;
+    q.z = temp;
+    return q;
+}
+
 // Implementation
 int main()
 {
@@ -241,34 +249,28 @@ int main()
                 }
             }
 
-            printf("%f %f %f\n", window.current_left_hand.orientation.x, window.current_left_hand.orientation.y, window.current_left_hand.orientation.z);
+            // printf("%f %f %f\n", window.current_left_hand.orientation.x, window.current_left_hand.orientation.y, window.current_left_hand.orientation.z);
             if (window.active)
             {
-                Vector3 hand_forward = Vector3RotateByQuaternion((Vector3){1, 0, 0}, window.current_left_hand.orientation);
-                //printf("%f %f %f\n", hand_forward.x, hand_forward.y, hand_forward.z);
-                // Vector3 rotateZ = (Vector3){0, 0, hand_forward.z};
+                Quaternion controllerOrientation = window.current_left_hand.orientation;
+                controllerOrientation = InvertQuaternionYAxis(controllerOrientation);
 
                 // Utiliser l'orientation de la main pour déterminer l'orientation du cube
-                Vector3 hand_up = Vector3RotateByQuaternion((Vector3){0, 1, 0}, window.current_left_hand.orientation);
-                // Vector3 rotateY = (Vector3){0, hand_forward.x, 0};
-                // Matrix test = MatrixIdentity();
-                // test = MatrixRotateXYZ(rotateY);
-
-                Vector3 hand_left = Vector3RotateByQuaternion((Vector3){0, 0, 1}, window.current_left_hand.orientation);
+                Vector3 hand_x = Vector3RotateByQuaternion((Vector3){1, 0, 0}, controllerOrientation); // z controler reverse
+                Vector3 hand_z = Vector3RotateByQuaternion((Vector3){0, 1, 0}, controllerOrientation); //x controler reverse
+                Vector3 hand_y = Vector3RotateByQuaternion((Vector3){0, 0, 1}, controllerOrientation); //all reverse
+                // all -1 => y controler reverse
+                // all 1 => y controler reverse
+                // -1, -1, 1 => all reverse
+                // 1, 1, -1 => all reverse
 
                 // Construire la matrice de transformation pour le cube
                 Matrix transform = {
-                    hand_forward.x, hand_forward.y, hand_forward.z, 0,
-                    hand_left.x, hand_left.y, hand_left.z, 0,
-                    hand_up.x, hand_up.y, hand_up.z, 0,
-                    window.current_left_hand.position.x, window.current_left_hand.position.y, window.current_left_hand.position.z, 1
+                    hand_x.x, hand_x.y, hand_x.z, 0,
+                    hand_y.x, hand_y.y, hand_y.z, 0,
+                    hand_z.x, hand_z.y, hand_z.z, 0,
+                    0, 0, 0, 1
                 };
-                // Matrix transform2 = {
-                //     hand_left.x, hand_left.y, hand_left.z, 0,
-                //     hand_up.x, hand_up.y, hand_up.z, 0,
-                //     hand_forward2.x, hand_forward2.y, hand_forward2.z, 0,
-                //     menu_position.x, menu_position.y, menu_position.z, 1
-                // };
 
                 // Appliquer la matrice de transformation et dessiner le cube
                 rlPushMatrix();
@@ -276,7 +278,7 @@ int main()
 
                 // Appliquer une rotation de 45° autour de l'axe Y
 
-                DrawCube(Vector3Zero(), 2, 1.2, 0.1, LIGHTGRAY); // Dessiner le cube centré
+                DrawCube(Vector3Zero(), 1, 1, 1, LIGHTGRAY); // Dessiner le cube centré
                 rlPopMatrix();
             }
 
